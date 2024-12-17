@@ -7,15 +7,15 @@ AUTHORIZED_CODES = ["freelunch"]
 st.title("DYNAMIC ALPHA MODEL")
 code_input = st.text_input("Enter your access code:", type="password")
 
-# Check if the entered code is valid
-if code_input in AUTHORIZED_CODES:
-    st.success("You're in. Please allow a few minutes for your DAM tickers to load.")
+# Check if the entered code is valid (only when something is entered)
+if code_input:
+    if code_input in AUTHORIZED_CODES:
+        st.success("You're in. Please allow a few minutes for your DAM tickers to load.")
+    else:
+        st.error("Invalid access code. Please try again.")
+        st.stop()  # Stops the app if the code is not correct
 else:
-    st.error("Invalid access code. Please try again.")
-    st.stop()  # Stops the app if the code is not correct
-
-else:
-    st.info("Enter your access code.")
+    st.info("Enter your access code.")  # Prompt when no input has been entered
 
 import pandas as pd
 import yfinance as yf
