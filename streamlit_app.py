@@ -1,7 +1,7 @@
 import streamlit as st
 
 # Define a list of allowed access codes
-AUTHORIZED_CODES = ["freelunch"]
+AUTHORIZED_CODES = ["freelunch", "nigger"]
 
 # Login page
 st.title("Dynamic Alpha Model (Beta)")
