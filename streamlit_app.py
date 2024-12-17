@@ -5,7 +5,7 @@ AUTHORIZED_CODES = ["freelunch"]
 
 # Login page
 st.title("Dynamic Alpha Model")
-code_input = st.text_input("Enter your access code:", type="password")
+code_input = st.text_input("Enter your DAM access code:", type="password")
 
 # Check if the entered code is valid
 if code_input in AUTHORIZED_CODES:
