@@ -9,10 +9,13 @@ code_input = st.text_input("Enter your access code:", type="password")
 
 # Check if the entered code is valid
 if code_input in AUTHORIZED_CODES:
-    st.success("Access granted! Here are the top tickers:")
+    st.success("You're in. Please allow a few minutes for your DAM tickers to load.")
 else:
     st.error("Invalid access code. Please try again.")
     st.stop()  # Stops the app if the code is not correct
+
+else:
+    st.info("Enter your access code.")
 
 import pandas as pd
 import yfinance as yf
