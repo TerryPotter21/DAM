@@ -4,7 +4,7 @@ import streamlit as st
 AUTHORIZED_CODES = ["freelunch"]
 
 # Login page
-st.title("Dynamic Alpha Model")
+st.title("Dynamic Alpha Model (Beta)")
 code_input = st.text_input("Enter your DAM access code:", type="password")
 
 # Check if the entered code is valid
