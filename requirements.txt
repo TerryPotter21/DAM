@@ -1,0 +1,5 @@
+pandas==2.2.2
+yfinance==0.2.43
+yahooquery==2.3.7
+python-dateutil==2.9.0.post0
+streamlit==1.41.1
