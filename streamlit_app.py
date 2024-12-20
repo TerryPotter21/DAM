@@ -155,20 +155,21 @@ all_data['DAM'] = all_data.apply(calculate_dam, axis=1)
 # Group by Sector and select the ticker with the highest DAM for each sector
 sector_best_tickers = all_data.groupby('Sector').apply(lambda x: x.loc[x['DAM'].idxmax()])
 
-# Print the result: tickers with the highest DAM for each sector
+# Add subheader for DAM Tickers
+st.subheader("DAM Tickers")
 st.write(sector_best_tickers[['Ticker']])
 
 # Fetch the sector weightings for SPY ETF
 etf = Ticker('SPY')
 sector_weightings = etf.fund_sector_weightings
 
-# Check and print sector weightings
+# Add subheader for Sector Weights
+st.subheader("Sector Weights")
 if isinstance(sector_weightings, dict) and 'SPY' in sector_weightings:
     st.write(f"\nSector weightings for SPY ETF:")
     for sector, weight in sector_weightings['SPY'].items():
         st.write(f"{sector}: {weight:.2%}")
 elif hasattr(sector_weightings, 'columns') and 'SPY' in sector_weightings.columns:
-    st.write(f"\nSector weightings for SPY ETF:")
     for index, row in sector_weightings.iterrows():
         sector = index.strip()
         weight = row['SPY']
