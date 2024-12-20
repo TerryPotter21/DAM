@@ -1,4 +1,9 @@
 import streamlit as st
+import pandas as pd
+import yfinance as yf
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+from yahooquery import Ticker
 
 # Define a list of allowed access codes
 AUTHORIZED_CODES = ["freelunch"]
@@ -9,20 +14,14 @@ code_input = st.text_input("Enter your DAM access code:", type="password")
 
 # Check if the entered code is valid
 if code_input in AUTHORIZED_CODES:
-    st.success("You're in. Please allow a few minutes for your DAM tickers to load.")
+    st.success("Access Granted! Please allow a few minutes for your DAM tickers to load.")
 else:
     st.error("Please enter a valid code.")
     st.stop()  # Stops the app if the code is not correct
 
-import pandas as pd
-import yfinance as yf
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-from yahooquery import Ticker
-
 # Define tickers and time period
 tickers = [
-    'SPY', 'A', 'AAPL', 'ABBV', 'ABC', 'ABMD', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI', 'ADM', 'ADP', 'ADSK',
+    'A', 'AAPL', 'ABBV', 'ABC', 'ABMD', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI', 'ADM', 'ADP', 'ADSK',
     'AEE', 'AEP', 'AES', 'AFL', 'AIG', 'AIZ', 'AJG', 'AKAM', 'ALB', 'ALGN', 'ALK', 'ALL', 'ALLE', 'AMAT',
     'AMCR', 'AMD', 'AME', 'AMGN', 'AMP', 'AMT', 'AMZN', 'ANET', 'ANSS', 'AON', 'AOS', 'APA', 'APD', 'APH',
     'APTV', 'ARE', 'ATO', 'ATVI', 'AVB', 'AVGO', 'AVY', 'AWK', 'AXP', 'AZO', 'BA', 'BAC', 'BAX', 'BBWI',
@@ -86,6 +85,9 @@ for ticker in tickers:
 
 # Reset index to format DataFrame
 all_data.reset_index(inplace=True)
+
+# Exclude tickers with "N/A" sector
+all_data = all_data[all_data['Sector'] != 'N/A']
 
 # Calculate Excess Return (Column E)
 all_data['Excess Return'] = (
@@ -153,20 +155,24 @@ all_data['DAM'] = all_data.apply(calculate_dam, axis=1)
 # Group by Sector and select the ticker with the highest DAM for each sector
 sector_best_tickers = all_data.groupby('Sector').apply(lambda x: x.loc[x['DAM'].idxmax()])
 
-# Define the ETF symbol for S&P 500 (SPDR S&P 500 ETF Trust - SPY)
-symbol = 'SPY'
+# Print the result: tickers with the highest DAM for each sector
+st.write(sector_best_tickers[['Ticker']])
 
-# Fetch the fund sector data
-etf = Ticker(symbol)
+# Fetch the sector weightings for SPY ETF
+etf = Ticker('SPY')
 sector_weightings = etf.fund_sector_weightings
 
-# Normalize sector names in sector_weightings
-normalized_weights = {key.lower().replace(" ", "_"): value for key, value in sector_weightings['SPY'].items()}
-
-# Print concise results: Sector, Ticker, and Sector Weight
-st.write(f"{'Sector':<20} | {'Ticker':<6} | {'Sector Weight':>12}")
-st.write("-" * 43)
-for sector, row in sector_best_tickers.iterrows():
-    normalized_sector = sector.lower().replace(" ", "_")  # Match naming convention
-    weight = normalized_weights.get(normalized_sector, 'N/A')  # Map to normalized weights
-    st.write(f"{sector:<20} | {row['Ticker']:<6} | {weight:>11.2%}" if weight != 'N/A' else f"{sector:<20} | {row['Ticker']:<6} | {'N/A':>11}")
+# Check and print sector weightings
+if isinstance(sector_weightings, dict) and 'SPY' in sector_weightings:
+    st.write(f"\nSector weightings for SPY ETF:")
+    for sector, weight in sector_weightings['SPY'].items():
+        st.write(f"{sector}: {weight:.2%}")
+elif hasattr(sector_weightings, 'columns') and 'SPY' in sector_weightings.columns:
+    st.write(f"\nSector weightings for SPY ETF:")
+    for index, row in sector_weightings.iterrows():
+        sector = index.strip()
+        weight = row['SPY']
+        if sector:  # Skip any empty rows
+            st.write(f"{sector}: {weight:.2%}")
+else:
+    st.write("Sector weightings for SPY ETF not found or no data available.")
