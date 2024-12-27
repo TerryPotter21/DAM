@@ -65,10 +65,17 @@ end_date = datetime.now().strftime('%Y-%m-%d')
 # Calculate start date as 13 months ago, and adjust to the first day of the month
 start_date = (datetime.now() - relativedelta(months=13)).replace(day=1).strftime('%Y-%m-%d')
 
+# Streamlit UI elements
+st.subheader('DAM Tickers')
+
+# Placeholder for progress updates
+status_placeholder = st.empty()
+
 # Download data for all tickers
 for ticker in tickers:
-    print(f"Downloading monthly data for {ticker}...")
-    
+    # Update the status in the placeholder
+    status_placeholder.text(f"Downloading data for {ticker}...")
+
     # Download monthly historical data for each ticker
     data = yf.download(ticker, start=start_date, end=end_date, interval="1mo")
     
@@ -152,12 +159,33 @@ def calculate_dam(row):
 # Apply DAM calculation
 all_data['DAM'] = all_data.apply(calculate_dam, axis=1)
 
-# Group by Sector and select the ticker with the highest DAM for each sector
-sector_best_tickers = all_data.groupby('Sector').apply(lambda x: x.loc[x['DAM'].idxmax()])
+# Now group by ticker to get the overall DAM score for each ticker
+tickers_dam = all_data.groupby('Ticker').agg({'DAM': 'mean'}).reset_index()
 
-# Add subheader for DAM Tickers
-st.subheader("DAM Tickers")
-st.write(sector_best_tickers[['Ticker']])
+# Now group by sector and get the top 2 DAM tickers
+def get_top_two_dam_tickers(group):
+    # Sort the group by DAM in descending order
+    sorted_group = group.sort_values(by='DAM', ascending=False)
+    # Get the top and second top tickers
+    top_ticker = sorted_group.iloc[0]
+    alt_ticker = sorted_group.iloc[1] if len(sorted_group) > 1 else None
+    return pd.Series({
+        'Ticker': top_ticker['Ticker'],
+        'DAM': top_ticker['DAM'],
+        'Alt Ticker': alt_ticker['Ticker'] if alt_ticker is not None else None,
+        'Alt DAM': alt_ticker['DAM'] if alt_ticker is not None else None
+    })
+
+# Merge the tickers DAM with sectors data
+tickers_dam_with_sector = all_data[['Ticker', 'Sector']].drop_duplicates()
+tickers_dam = tickers_dam.merge(tickers_dam_with_sector, on='Ticker', how='left')
+
+# Apply the function to each sector
+sector_best_tickers = tickers_dam.groupby('Sector').apply(get_top_two_dam_tickers)
+
+# Now reset index and display the result
+sector_best_tickers_reset = sector_best_tickers.reset_index()
+st.write(sector_best_tickers_reset[['Sector', 'Ticker', 'Alt Ticker']])
 
 # Fetch the sector weightings for SPY ETF
 etf = Ticker('SPY')
