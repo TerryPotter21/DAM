@@ -9,7 +9,7 @@ from yahooquery import Ticker
 AUTHORIZED_CODES = ["freelunch"]
 
 # Login page
-st.title("Dynamic Alpha Model (Beta)")
+st.title("Dynamic Alpha Model")
 code_input = st.text_input("Enter your DAM access code:", type="password")
 
 # Initialize a flag to check if the code is correct
