@@ -1,6 +1,5 @@
-[theme]
-primaryColor="#32c398"
-backgroundColor="#4c4646"
-secondaryBackgroundColor="#80838a"
-textColor="#d6d7de"
-font="monospace"
+title: Hacker theme
+description: Hacker is a theme for GitHub Pages.
+show_downloads: true
+google_analytics:
+theme: jekyll-theme-hacker
