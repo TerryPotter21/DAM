@@ -37,7 +37,7 @@ if is_code_valid:
         st.write("Please allow a few minutes for your DAM tickers to load.")
         # Define tickers and time period
         tickers = [
-    'A', 'AAPL', 'ABBV', 'ABC', 'ABMD', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI', 'ADM', 'ADP', 'ADSK',
+            'A', 'AAPL', 'ABBV', 'ABC', 'ABMD', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI', 'ADM', 'ADP', 'ADSK',
     'AEE', 'AEP', 'AES', 'AFL', 'AIG', 'AIZ', 'AJG', 'AKAM', 'ALB', 'ALGN', 'ALK', 'ALL', 'ALLE', 'AMAT',
     'AMCR', 'AMD', 'AME', 'AMGN', 'AMP', 'AMT', 'AMZN', 'ANET', 'ANSS', 'AON', 'AOS', 'APA', 'APD', 'APH',
     'APTV', 'ARE', 'ATO', 'ATVI', 'AVB', 'AVGO', 'AVY', 'AWK', 'AXP', 'AZO', 'BA', 'BAC', 'BAX', 'BBWI',
@@ -199,10 +199,18 @@ if is_code_valid:
         # Apply the function to each sector
         sector_best_tickers = tickers_dam.groupby('Sector').apply(get_top_two_dam_tickers)
 
-        # Now reset index and display the result
+        # Ensure the columns are dropped after defining `sector_best_tickers_reset`
         sector_best_tickers_reset = sector_best_tickers.reset_index()
-        st.write(sector_best_tickers_reset[['Sector', 'Ticker', 'Alt Ticker']])
-        
+
+        # Drop unnecessary columns
+        sector_best_tickers_reset = sector_best_tickers_reset.drop(columns=['DAM', 'Alt DAM'], errors='ignore')
+
+        # Apply the styling to hide the index and format as needed
+        styler = sector_best_tickers_reset.style.hide(axis="index")
+
+        # Display the styled table using to_html to prevent index column from appearing
+        st.write(styler.to_html(), unsafe_allow_html=True)
+
         # Fetch the sector weightings for SPY ETF
         etf = Ticker('SPY')
         sector_weightings = etf.fund_sector_weightings
