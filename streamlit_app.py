@@ -3,7 +3,7 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from yahooquery import Ticker
+import time
 
 # Define a list of allowed access codes
 AUTHORIZED_CODES = ["freelunch"]
@@ -13,31 +13,12 @@ st.title("Dynamic Alpha Model")
 code_input = st.text_input("Enter your DAM access code:", type="password")
 
 # Initialize a flag to check if the code is correct
-is_code_valid = None
+is_code_valid = code_input in AUTHORIZED_CODES if code_input else None
 
-# Check if the entered code is valid
-if code_input:
-    if code_input in AUTHORIZED_CODES:
-        is_code_valid = True
-    else:
-        is_code_valid = False
-
-# Display success or error messages based on code validation
 if is_code_valid:
     st.success("Access Granted!")
 
-    # Step 1: Model using current monthly data (TRUE/FALSE) message
-    use_current_data = True  # This can be set based on your conditions
-    st.write(f"Model using current monthly data: {use_current_data}")
-
-    # Step 2: Proceed Button
-    proceed_button = st.button("Proceed")
-    
-    if proceed_button:
-        st.write("Please allow a few minutes for your DAM tickers to load.")
-        # Define tickers and time period
-        tickers = [
-            'A', 'AAPL', 'ABBV', 'ABC', 'ABMD', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI', 'ADM', 'ADP', 'ADSK',
+    tickers = ['A', 'AAPL', 'ABBV', 'ABC', 'ABMD', 'ABT', 'ACGL', 'ACN', 'ADBE', 'ADI', 'ADM', 'ADP', 'ADSK',
     'AEE', 'AEP', 'AES', 'AFL', 'AIG', 'AIZ', 'AJG', 'AKAM', 'ALB', 'ALGN', 'ALK', 'ALL', 'ALLE', 'AMAT',
     'AMCR', 'AMD', 'AME', 'AMGN', 'AMP', 'AMT', 'AMZN', 'ANET', 'ANSS', 'AON', 'AOS', 'APA', 'APD', 'APH',
     'APTV', 'ARE', 'ATO', 'ATVI', 'AVB', 'AVGO', 'AVY', 'AWK', 'AXP', 'AZO', 'BA', 'BAC', 'BAX', 'BBWI',
@@ -70,165 +51,143 @@ if is_code_valid:
     'TPR', 'TRMB', 'TROW', 'TRV', 'TSCO', 'TSLA', 'TSN', 'TT', 'TTWO', 'TXN', 'TXT', 'TYL', 'UAL', 'UDR',
     'UHS', 'ULTA', 'UNH', 'UNP', 'UPS', 'URI', 'USB', 'V', 'VICI', 'VLO', 'VMC', 'VNO', 'VRSK', 'VRSN',
     'VRTX', 'VTR', 'VTRS', 'VZ', 'VST', 'WAB', 'WAT', 'WBA', 'WBD', 'WDC', 'WEC', 'WELL', 'WFC', 'WM',
-    'WMB', 'WMT', 'WRB', 'WRK', 'WST', 'WTW', 'WY', 'WYNN', 'XEL', 'XOM', 'XYL', 'YUM', 'ZBH', 'ZBRA', 'ZTS'
-        ]
+    'WMB', 'WMT', 'WRB', 'WRK', 'WST', 'WTW', 'WY', 'WYNN', 'XEL', 'XOM', 'XYL', 'YUM', 'ZBH', 'ZBRA', 'ZTS']
+    all_data = pd.DataFrame()
+
+    # Get the current date
+    current_date = datetime.now()
+    current_month_year = current_date.strftime('%Y-%m')  # Format as 'YYYY-MM'
+
+    st.write("**DAM Instructions:**")
+    st.write("Rotate at the beginning of the month.")
+    st.write("Ensure current monthly data is true (before 5th).")
+    st.write("Weight portfolio matching S&P sectors.")
+    st.write("Errors/questions: tannerterry221@gmail.com")
+    st.write("")
+    st.write("Loading DAM Monthly Data. Please wait...")
+
+    for ticker in tickers:
+        stock = yf.Ticker(ticker)
+        data = stock.history(period='14mo', interval='1mo')
+        data.reset_index(inplace=True)
+
+        if not data.empty:
+            data['Ticker'] = ticker
+            all_data = pd.concat([all_data, data[['Date', 'Ticker', 'Close']].rename(columns={'Close': 'Adj Close'})])
+
+        time.sleep(1)  # Sleep to prevent rate limits
+
+    all_data.reset_index(drop=True, inplace=True)
+
+    # Extract the most recent date in the dataset
+    if not all_data.empty:
+        latest_data_date = all_data['Date'].max()
+        latest_month_year = latest_data_date.strftime('%Y-%m')
+
+        # Check if the latest data is from the current month
+        is_current_data = latest_month_year == current_month_year
+    else:
+        is_current_data = False  # No data available
+
+    st.write(f"Model using current monthly data: {is_current_data}")
+
+    if st.button("Proceed"):
+        st.write("Please allow a few minutes for your DAM tickers to load.")
         
-        all_data = pd.DataFrame()
-
-        # Define end date as today
         end_date = datetime.now().strftime('%Y-%m-%d')
-
-        # Calculate start date as 13 months ago, and adjust to the first day of the month
         start_date = (datetime.now() - relativedelta(months=13)).replace(day=1).strftime('%Y-%m-%d')
 
-        # Streamlit UI elements
         st.subheader('DAM Tickers')
-
-        # Placeholder for progress updates
         status_placeholder = st.empty()
 
-        # Download data for all tickers
         for ticker in tickers:
-            # Update the status in the placeholder
             status_placeholder.text(f"Downloading data for {ticker}...")
+            stock = yf.Ticker(ticker)
+            data = stock.history(period='14mo', interval='1mo')
+            data.reset_index(inplace=True)
 
-            # Download monthly historical data for each ticker
-            data = yf.download(ticker, start=start_date, end=end_date, interval="1mo")
+            sector = 'N/A'
+            try:
+                stock_info = stock.info
+                sector = stock_info.get('sector', 'N/A')
+            except Exception:
+                pass  # Suppress errors
 
-            # Get stock info, including sector
-            stock_info = yf.Ticker(ticker).info
-            sector = stock_info.get('sector', 'N/A')  # Get sector, if not available, return 'N/A'
-
-            # Add Ticker, Sector, and Adjusted Close columns
             data['Ticker'] = ticker
             data['Sector'] = sector
+            all_data = pd.concat([all_data, data[['Date', 'Ticker', 'Sector', 'Close']].rename(columns={'Close': 'Adj Close'})])
 
-            # Keep only the required columns
-            all_data = pd.concat([all_data, data[['Ticker', 'Sector', 'Adj Close']]])
+            time.sleep(1)  # Sleep for rate limits
 
-        # Reset index to format DataFrame
-        all_data.reset_index(inplace=True)
-
-        # Exclude tickers with "N/A" sector
+        all_data.reset_index(drop=True, inplace=True)
         all_data = all_data[all_data['Sector'] != 'N/A']
+        
+        all_data['Excess Return'] = all_data.groupby('Ticker')['Adj Close'].pct_change().sub(0.024 / 12).fillna(0)
 
-        # Calculate Excess Return (Column E)
-        all_data['Excess Return'] = (
-            all_data.groupby('Ticker')['Adj Close']
-            .pct_change()
-            .sub(0.024 / 12)  # Subtracting the risk-free rate (monthly)
-            .fillna(0)
-        )
-
-        # Get SPY data and calculate SPY Excess Return
-        spy_data = yf.download('SPY', start=start_date, end=end_date, interval="1mo")
-        spy_data['SPY Excess Return'] = spy_data['Adj Close'].pct_change().sub(0.024 / 12).fillna(0)
+        spy_data = yf.Ticker('SPY').history(period='14mo', interval='1mo')
         spy_data.reset_index(inplace=True)
-
-        # Map SPY Excess Return to all_data
+        spy_data['SPY Excess Return'] = spy_data['Close'].pct_change().sub(0.024 / 12).fillna(0)
         spy_return_map = dict(zip(spy_data['Date'], spy_data['SPY Excess Return']))
         all_data['SPY Excess Return'] = all_data['Date'].map(spy_return_map)
 
-        # Calculate 3 Month Return (Column G)
         all_data['3 Month Return'] = all_data.groupby('Ticker')['Adj Close'].pct_change(periods=3)
 
-        # Calculate 3 Month Market Weighted Return (Column H)
         def calculate_market_weighted_return(df):
-            weighted_returns = []
-            for i in range(len(df)):
-                if i < 3:  # Require at least 3 months of data
-                    weighted_returns.append(None)
-                else:
-                    weighted_return = (
-                        df['SPY Excess Return'].iloc[i-3] * 0.04 +  # 3 periods ago
-                        df['SPY Excess Return'].iloc[i-2] * 0.16 +  # 2 periods ago
-                        df['SPY Excess Return'].iloc[i-1] * 0.36    # 1 period ago (most recent)
-                    )
-                    weighted_returns.append(weighted_return)
+            weighted_returns = [None] * 3
+            for i in range(3, len(df)):
+                weighted_returns.append(
+                    df['SPY Excess Return'].iloc[i-3] * 0.04 +
+                    df['SPY Excess Return'].iloc[i-2] * 0.16 +
+                    df['SPY Excess Return'].iloc[i-1] * 0.36
+                )
             return pd.Series(weighted_returns, index=df.index)
 
-        all_data['3 Month Market Weighted Return'] = (
-            all_data.groupby('Ticker', group_keys=False).apply(calculate_market_weighted_return)
-        )
+        all_data['3 Month Market Weighted Return'] = all_data.groupby('Ticker', group_keys=False).apply(calculate_market_weighted_return)
 
-        # Calculate 12 Month Beta (Column I)
         def calculate_beta(df):
-            beta = []
-            for i in range(len(df)):
-                if i < 11:  # Require at least 12 months of data
-                    beta.append(None)
-                else:
-                    y = df['Excess Return'].iloc[i-11:i+1]
-                    x = df['SPY Excess Return'].iloc[i-11:i+1]
-                    beta.append(pd.Series(y).cov(x) / pd.Series(x).var())
+            beta = [None] * 11
+            for i in range(11, len(df)):
+                y = df['Excess Return'].iloc[i-11:i+1]
+                x = df['SPY Excess Return'].iloc[i-11:i+1]
+                beta.append(pd.Series(y).cov(x) / pd.Series(x).var())
             return pd.Series(beta, index=df.index)
 
-        all_data['12 Month Beta'] = (
-            all_data.groupby('Ticker', group_keys=False).apply(calculate_beta)
-        )
+        all_data['12 Month Beta'] = all_data.groupby('Ticker', group_keys=False).apply(calculate_beta)
 
-        # Define DAM calculation function
-        def calculate_dam(row):
-            # Example formula combining 3-month return, market weighted return, and beta.
-            return (row['3 Month Return'] or 0) + (row['3 Month Market Weighted Return'] or 0) + (row['12 Month Beta'] or 0)
+        # Check for missing or zero values in 3 Month Return and 3 Month Market Weighted Return before calculating DAM
+        all_data['DAM'] = all_data.apply(lambda row: (
+            (row['3 Month Return'] or 0) + 
+            (row['3 Month Market Weighted Return'] or 0) + 
+            (row['12 Month Beta'] or 0)
+        ) if row['3 Month Return'] is not None and row['3 Month Market Weighted Return'] is not None else 0, axis=1)
 
-        # Apply DAM calculation
-        all_data['DAM'] = all_data.apply(calculate_dam, axis=1)
-
-        # Now group by ticker to get the overall DAM score for each ticker
         tickers_dam = all_data.groupby('Ticker').agg({'DAM': 'mean'}).reset_index()
-
-        # Now group by sector and get the top 2 DAM tickers
-        def get_top_two_dam_tickers(group):
-            # Sort the group by DAM in descending order
-            sorted_group = group.sort_values(by='DAM', ascending=False)
-            # Get the top and second top tickers
-            top_ticker = sorted_group.iloc[0]
-            alt_ticker = sorted_group.iloc[1] if len(sorted_group) > 1 else None
-            return pd.Series({
-                'Ticker': top_ticker['Ticker'],
-                'DAM': top_ticker['DAM'],
-                'Alt Ticker': alt_ticker['Ticker'] if alt_ticker is not None else None,
-                'Alt DAM': alt_ticker['DAM'] if alt_ticker is not None else None
-            })
-
-        # Merge the tickers DAM with sectors data
         tickers_dam_with_sector = all_data[['Ticker', 'Sector']].drop_duplicates()
         tickers_dam = tickers_dam.merge(tickers_dam_with_sector, on='Ticker', how='left')
 
-        # Apply the function to each sector
-        sector_best_tickers = tickers_dam.groupby('Sector').apply(get_top_two_dam_tickers)
+        def get_top_two_dam_tickers(group):
+            sorted_group = group.sort_values(by='DAM', ascending=False)
+            top_ticker = sorted_group.iloc[0]
+            alt_ticker = sorted_group.iloc[1] if len(sorted_group) > 1 else None
+            return pd.Series({'Ticker': top_ticker['Ticker'], 'Alt Ticker': alt_ticker['Ticker'] if alt_ticker is not None else None})
 
-        # Ensure the columns are dropped after defining `sector_best_tickers_reset`
-        sector_best_tickers_reset = sector_best_tickers.reset_index()
+        sector_best_tickers = tickers_dam.groupby('Sector').apply(get_top_two_dam_tickers).reset_index()
+        st.write(sector_best_tickers.style.hide(axis="index").to_html(), unsafe_allow_html=True)
 
-        # Drop unnecessary columns
-        sector_best_tickers_reset = sector_best_tickers_reset.drop(columns=['DAM', 'Alt DAM'], errors='ignore')
+        # sector weights
+        etf = yf.Ticker('SPY')
+        funds_data = etf.funds_data  # Accessing funds data
 
-        # Apply the styling to hide the index and format as needed
-        styler = sector_best_tickers_reset.style.hide(axis="index")
-
-        # Display the styled table using to_html to prevent index column from appearing
-        st.write(styler.to_html(), unsafe_allow_html=True)
-
-        # Fetch the sector weightings for SPY ETF
-        etf = Ticker('SPY')
-        sector_weightings = etf.fund_sector_weightings
-
-        # Add subheader for Sector Weights
         st.subheader("Sector Weights")
-        if isinstance(sector_weightings, dict) and 'SPY' in sector_weightings:
-            st.write(f"\nSector weightings for SPY ETF:")
-            for sector, weight in sector_weightings['SPY'].items():
-                st.write(f"{sector}: {weight:.2%}")
-        elif hasattr(sector_weightings, 'columns') and 'SPY' in sector_weightings.columns:
-            for index, row in sector_weightings.iterrows():
-                sector = index.strip()
-                weight = row['SPY']
-                if sector:  # Skip any empty rows
-                    st.write(f"{sector}: {weight:.2%}")
-        else:
-            st.write("Sector weightings for SPY ETF not found or no data available.")
+        try:
+            sector_weightings = funds_data.sector_weightings  
+            if sector_weightings:
+                formatted_weightings = {sector: f"{weight * 100:.2f}%" for sector, weight in sector_weightings.items()}
+                st.write(formatted_weightings)
+            else:
+                st.write("No sector weightings data available for SPY ETF.")
+        except Exception:
+            st.write("No sector weightings data available or an error occurred for SPY ETF.")
 
 elif is_code_valid is False:
     st.error("Please enter a valid code.")
