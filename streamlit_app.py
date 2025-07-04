@@ -15,21 +15,28 @@ is_code_valid = code_input in AUTHORIZED_CODES if code_input else None
 if is_code_valid:
     st.success("Access Granted!")
 
-    # Check if data is current
+    # Step 1: Check if monthly data is current
     test_ticker = "AAPL"
-    current_month = datetime.now().strftime("%Y-%m")
     try:
         data_check = yf.download(test_ticker, period="14mo", interval="1mo")
         if isinstance(data_check.columns, pd.MultiIndex):
             data_check.columns = data_check.columns.droplevel(0)
         data_check.reset_index(inplace=True)
-        latest_data_month = data_check["Date"].max().strftime("%Y-%m") if not data_check.empty else None
+
+        latest_data = data_check["Date"].max()
+        latest_data_month = latest_data.strftime("%Y-%m") if not data_check.empty else None
+        current_month = datetime.now().strftime("%Y-%m")
+
+        st.write(f"Latest data date: {latest_data_month}")
+        st.write(f"Current month: {current_month}")
+
         is_current_data = latest_data_month == current_month if latest_data_month else False
     except Exception:
         is_current_data = False
 
     st.write(f"Model using current monthly data: {is_current_data}")
 
+    # Step 2: Show Proceed only if current data is available
     if is_current_data:
         if st.button("Proceed"):
             st.write("Please allow a few minutes for your DAM tickers to load.")
@@ -114,8 +121,8 @@ if is_code_valid:
 
             def get_top_two_dam_tickers(group):
                 sorted_group = group.sort_values(by='DAM', ascending=False)
-                top_ticker = sorted_group.iloc[0]
-                alt_ticker = sorted_group.iloc[1] if len(sorted_group) > 1 else None
+                top_ticker = group.iloc[0]
+                alt_ticker = group.iloc[1] if len(group) > 1 else None
                 return pd.Series({'Ticker': top_ticker['Ticker'], 'Alt Ticker': alt_ticker['Ticker'] if alt_ticker is not None else None})
 
             sector_best_tickers = tickers_dam.groupby('Sector').apply(get_top_two_dam_tickers).reset_index()
