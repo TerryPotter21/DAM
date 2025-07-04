@@ -15,23 +15,37 @@ is_code_valid = code_input in AUTHORIZED_CODES if code_input else None
 if is_code_valid:
     st.success("Access Granted!")
 
+    # DAM instructions
+    st.write("**DAM Instructions:**")
+    st.write("- Rotate at the beginning of the month.")
+    st.write("- Ensure current monthly data is true (before 5th).")
+    st.write("- Weight portfolio matching S&P sectors.")
+    st.write("- Errors/questions: tannerterry221@gmail.com")
+    st.write("")
+
     # Step 1: Check if monthly data is current
     test_ticker = "AAPL"
     try:
         data_check = yf.download(test_ticker, period="14mo", interval="1mo")
-        if isinstance(data_check.columns, pd.MultiIndex):
-            data_check.columns = data_check.columns.droplevel(0)
-        data_check.reset_index(inplace=True)
 
-        latest_data = data_check["Date"].max()
-        latest_data_month = latest_data.strftime("%Y-%m") if not data_check.empty else None
-        current_month = datetime.now().strftime("%Y-%m")
+        if not data_check.empty:
+            if isinstance(data_check.columns, pd.MultiIndex):
+                data_check.columns = data_check.columns.droplevel(0)
 
-        st.write(f"Latest data date: {latest_data_month}")
-        st.write(f"Current month: {current_month}")
+            latest_data = data_check.index.max()
+            latest_data_month = latest_data.strftime("%Y-%m")
+            current_month = datetime.now().strftime("%Y-%m")
 
-        is_current_data = latest_data_month == current_month if latest_data_month else False
-    except Exception:
+            st.write(f"Latest data date: {latest_data_month}")
+            st.write(f"Current month: {current_month}")
+
+            is_current_data = latest_data_month == current_month
+        else:
+            st.warning("No data returned for AAPL.")
+            is_current_data = False
+
+    except Exception as e:
+        st.error(f"Data load failed: {e}")
         is_current_data = False
 
     st.write(f"Model using current monthly data: {is_current_data}")
