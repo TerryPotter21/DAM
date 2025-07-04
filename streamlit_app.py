@@ -28,10 +28,11 @@ if is_code_valid:
     try:
         data_check = yf.download(test_ticker, period="14mo", interval="1mo")
 
+        # Show what was returned
         st.write("Raw AAPL data (head):")
         st.dataframe(data_check.head())
 
-if not data_check.empty:
+        if not data_check.empty:
             if isinstance(data_check.columns, pd.MultiIndex):
                 data_check.columns = data_check.columns.droplevel(0)
 
